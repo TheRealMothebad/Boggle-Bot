@@ -7,6 +7,8 @@ use serenity::prelude::*;
 
 struct Handler;
 
+let mut estopo = false;
+
 #[async_trait]
 impl EventHandler for Handler {
     // Set a handler for the `message` event - so that whenever a new message
@@ -23,6 +25,9 @@ impl EventHandler for Handler {
             if let Err(why) = msg.channel_id.say(&ctx.http, "Pong!").await {
                 println!("Error sending message: {:?}", why);
             }
+        }
+        if msg.content == "!stop" {
+            estopo = false;
         }
     }
 
@@ -52,11 +57,24 @@ async fn main() {
     let mut client =
         Client::builder(&token, intents).event_handler(Handler).await.expect("Err creating client");
 
+    let manager = client.shard_manager.clone();
+
+    tokio::spawn(async move {
+        loop {
+            if estopo {
+                client.stop().await;
+            }
+        }
+    });
+
     // Finally, start a single shard, and start listening to events.
     //
     // Shards will automatically attempt to reconnect, and will perform
     // exponential backoff until it reconnects.
     if let Err(why) = client.start().await {
         println!("Client error: {:?}", why);
+    }
+    if estopo {
+        client.stop();
     }
 }
