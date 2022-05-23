@@ -7,7 +7,7 @@ use serenity::prelude::*;
 
 struct Handler;
 
-let mut estopo = false;
+static mut estopo: bool = false;
 
 #[async_trait]
 impl EventHandler for Handler {
@@ -27,7 +27,7 @@ impl EventHandler for Handler {
             }
         }
         if msg.content == "!stop" {
-            estopo = false;
+            unsafe { estopo = true; }
         }
     }
 
@@ -61,8 +61,10 @@ async fn main() {
 
     tokio::spawn(async move {
         loop {
+            unsafe {
             if estopo {
-                client.stop().await;
+                manager.lock().await.shutdown_all().await;
+            }
             }
         }
     });
@@ -73,8 +75,5 @@ async fn main() {
     // exponential backoff until it reconnects.
     if let Err(why) = client.start().await {
         println!("Client error: {:?}", why);
-    }
-    if estopo {
-        client.stop();
     }
 }
